@@ -1,0 +1,14 @@
+[Unit]
+Description=EC Pro Lesson Watcher Web Dashboard
+After=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ecpro-lesson-watcher
+ExecStart=/home/ubuntu/ecpro-lesson-watcher/.venv/bin/python -u /home/ubuntu/ecpro-lesson-watcher/dashboard.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

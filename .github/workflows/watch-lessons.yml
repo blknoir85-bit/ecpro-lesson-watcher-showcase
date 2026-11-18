@@ -1,0 +1,58 @@
+name: Watch EC Pro Lesson Dates
+
+on:
+  schedule:
+    # Off-peak minutes (:07 and :37) avoid top-of-the-hour cron queue delays
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: watch-lessons
+  cancel-in-progress: false
+
+jobs:
+  check-lessons:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Playwright Chromium
+        run: playwright install chromium --with-deps
+
+      - name: Run lesson watcher
+        env:
+          ECPRO_BASE_URL: ${{ secrets.ECPRO_BASE_URL }}
+          ECPRO_EMAIL: ${{ secrets.ECPRO_EMAIL }}
+          ECPRO_PASSWORD: ${{ secrets.ECPRO_PASSWORD }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          MONTHS_AHEAD: "3"
+        run: python watcher.py
+
+      - name: Save updated seen_dates.json
+        run: |
+          if ! git diff --quiet seen_dates.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add seen_dates.json
+            git commit -m "Update seen lesson dates [skip ci]"
+            git push
+          fi
